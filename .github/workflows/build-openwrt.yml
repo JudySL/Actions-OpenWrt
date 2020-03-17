@@ -9,21 +9,30 @@
 name: Build OpenWrt
 
 on:
+# release触发
   release:
     types: [published]
+
+# 编辑触发
   push:
     branches:
       - master
-    paths:
-      - '.config'
-#  schedule:
-#    - cron: 0 8 * * 5
+
+# config触发
+   paths:
+     - '.config'
+
+# 定时触发
+# schedule:
+#   - cron: 0 8 * * 5
+
+# 点赞触发
   watch:
     types: [started]
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
-  REPO_BRANCH: master
+  REPO_URL: https://github.com/Lienol/openwrt #https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: dev-lean-lede #master
   CONFIG_FILE: .config
   DIY_SH: diy.sh
   FREE_UP_DISK: false
@@ -37,10 +46,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
+    - name: Checkout 校验本地文件
       uses: actions/checkout@master
 
-    - name: Initialization environment
+    - name: Initialization environment 初始化编译环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -50,7 +59,7 @@ jobs:
         sudo -E apt-get -qq install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler
         curl -fsSL https://raw.githubusercontent.com/P3TERX/dotfiles/master/.bashrc >> ~/.bashrc
 
-    - name: Free up disk space
+    - name: Free up disk space 释放磁盘空间
       if: env.FREE_UP_DISK == 'true'
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -61,16 +70,16 @@ jobs:
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
 
-    - name: Clone source code
+    - name: Clone source code 克隆源代码
       run: git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
 
-    - name: Update feeds
+    - name: Update feeds 更新源
       run: cd openwrt && ./scripts/feeds update -a
 
-    - name: Install feeds
+    - name: Install feeds 安装源
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Load custom configuration
+    - name: Load custom configuration 创建自定义配置文件
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
@@ -79,11 +88,11 @@ jobs:
         ../$DIY_SH
         make defconfig
 
-    - name: SSH connection to Actions
+    - name: SSH connection to Actions 开启SSH远程连接
       uses: P3TERX/debugger-action@master
       if: env.SSH_ACTIONS == 'true'
 
-    - name: Download package
+    - name: Download package 下载软件包
       id: package
       run: |
         cd openwrt
@@ -91,7 +100,7 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile the firmware
+    - name: Compile the firmware 编译固件
       id: compile
       run: |
         cd openwrt
@@ -99,14 +108,14 @@ jobs:
         make -j$(nproc) || make -j1 V=s
         echo "::set-output name=status::success"
 
-    - name: Upload bin directory
+    - name: Upload bin directory 上传BIN目录
       uses: actions/upload-artifact@master
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_directory
         path: openwrt/bin
 
-    - name: Organize files
+    - name: Organize files 整理文件
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
@@ -115,7 +124,7 @@ jobs:
         echo "::set-env name=FIRMWARE::$(pwd)"
         echo "::set-output name=status::success"
 
-    - name: Upload firmware directory
+    - name: Upload firmware directory 上传固件
       uses: actions/upload-artifact@master
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
