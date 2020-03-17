@@ -19,7 +19,7 @@ on:
       - master
 
 # config触发
-   paths:
+    paths:
      - '.config'
 
 # 定时触发
